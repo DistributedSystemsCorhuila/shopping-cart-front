@@ -1,0 +1,152 @@
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+    </svg>
+    <span class="topbar-title">Clientes</span>
+    <span class="topbar-badge">{{ customers().length }} registrados</span>
+  </div>
+</div>
+
+<main class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Clientes</h1>
+      <p class="page-desc">Administración de clientes registrados</p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost btn-sm" (click)="load()" [disabled]="loading()">
+        @if (loading()) { <span class="spinner"></span> } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        }
+        Refrescar
+      </button>
+      <button class="btn btn-primary" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo Cliente
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="loading-box"><span class="spinner"></span> Cargando clientes…</div>
+    } @else if (customers().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <p class="empty-title">Sin clientes</p>
+        <p class="empty-desc">Registra el primer cliente</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Teléfono</th>
+              <th>Dirección</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of customers(); track c.id) {
+              <tr>
+                <td class="text-muted text-sm">{{ c.id }}</td>
+                <td class="fw-600">{{ c.name }}</td>
+                <td class="text-sm">{{ c.email }}</td>
+                <td class="text-sm">{{ c.phone }}</td>
+                <td class="text-sm text-muted" style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.address }}</td>
+                <td>
+                  <div class="actions">
+                    <a class="btn btn-success btn-sm" [routerLink]="['/cart', c.id]" title="Ver carrito" aria-label="Ver carrito del cliente">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                      Carrito
+                    </a>
+                    <button class="btn btn-ghost btn-sm btn-icon" (click)="openEdit(c)" aria-label="Editar cliente">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn btn-danger btn-sm btn-icon" (click)="confirmDelete(c)" aria-label="Eliminar cliente">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</main>
+
+<!-- Create / Edit Modal -->
+@if (showModal()) {
+  <div class="overlay" (click)="closeModal()" role="dialog" aria-modal="true" [attr.aria-label]="modalTitle()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">{{ modalTitle() }}</span>
+        <button class="btn-close" (click)="closeModal()" aria-label="Cerrar">&#x2715;</button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="c-name">Nombre completo <span class="req">*</span></label>
+            <input id="c-name" class="form-control" formControlName="name" placeholder="Ej: Juan Pérez">
+            @if (fieldError('name')) { <span class="form-error">Nombre requerido (mín. 2 caracteres)</span> }
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="c-email">Correo electrónico <span class="req">*</span></label>
+            <input id="c-email" type="email" class="form-control" formControlName="email" placeholder="juan@email.com">
+            @if (fieldError('email')) { <span class="form-error">Correo válido requerido</span> }
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="c-phone">Teléfono <span class="req">*</span></label>
+              <input id="c-phone" class="form-control" formControlName="phone" placeholder="3101234567">
+              @if (fieldError('phone')) { <span class="form-error">Teléfono requerido</span> }
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-address">Dirección <span class="req">*</span></label>
+              <input id="c-address" class="form-control" formControlName="address" placeholder="Calle 10 # 5-20">
+              @if (fieldError('address')) { <span class="form-error">Dirección requerida</span> }
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" (click)="closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">
+            @if (saving()) { <span class="spinner"></span> }
+            {{ editingId() ? 'Actualizar' : 'Registrar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Delete Confirm Modal -->
+@if (deleteTarget()) {
+  <div class="overlay" (click)="cancelDelete()" role="dialog" aria-modal="true" aria-label="Confirmar eliminación">
+    <div class="modal" (click)="$event.stopPropagation()" style="max-width:380px">
+      <div class="modal-body" style="text-align:center;padding:2rem 1.5rem">
+        <div class="confirm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </div>
+        <p class="confirm-title">Eliminar cliente</p>
+        <p class="confirm-msg">¿Seguro que deseas eliminar a <strong>{{ deleteTarget()?.name }}</strong>?</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="cancelDelete()">Cancelar</button>
+        <button class="btn btn-danger" (click)="doDelete()">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+}
