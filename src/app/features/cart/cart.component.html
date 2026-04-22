@@ -1,0 +1,201 @@
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+    </svg>
+    <span class="topbar-title">Carrito</span>
+    @if (selectedCustomer()) {
+      <span class="topbar-badge">{{ selectedCustomer()?.name }}</span>
+    }
+  </div>
+</div>
+
+<main class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Carrito de Compras</h1>
+      <p class="page-desc">Agrega productos y realiza el checkout</p>
+    </div>
+  </div>
+
+  <!-- Customer selector -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-body" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <label class="form-label" for="customer-select">Selecciona un cliente</label>
+        @if (loadingCustomers()) {
+          <div class="flex-center text-muted text-sm"><span class="spinner"></span> Cargando clientes…</div>
+        } @else {
+          <select id="customer-select" class="form-control"
+            [value]="selectedCustomerId() ?? ''"
+            (change)="selectCustomer($event)">
+            <option value="">— Seleccionar cliente —</option>
+            @for (c of customers(); track c.id) {
+              <option [value]="c.id">{{ c.name }} ({{ c.email }})</option>
+            }
+          </select>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (selectedCustomerId() && !loadingCustomers()) {
+    @if (loadingCart()) {
+      <div class="loading-box"><span class="spinner"></span> Cargando carrito…</div>
+    } @else if (cart()) {
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start">
+        <!-- Cart items -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Ítems del carrito</span>
+            <div class="actions">
+              <span class="badge badge-info">{{ cart()?.status }}</span>
+              @if ((cart()?.items?.length ?? 0) > 0) {
+                <button class="btn btn-ghost btn-sm" (click)="clearCart()" [disabled]="clearingCart()">
+                  @if (clearingCart()) { <span class="spinner"></span> } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                  }
+                  Vaciar
+                </button>
+              }
+            </div>
+          </div>
+          <div class="card-body">
+            @if ((cart()?.items?.length ?? 0) === 0) {
+              <div class="empty-state" style="padding:2rem">
+                <div class="empty-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </div>
+                <p class="empty-title">Carrito vacío</p>
+                <p class="empty-desc">Agrega productos desde el panel de la derecha</p>
+              </div>
+            } @else {
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>P. Unitario</th>
+                      <th>Cantidad</th>
+                      <th>Subtotal</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of cart()?.items; track item.id) {
+                      <tr>
+                        <td class="fw-600">{{ item.productName }}</td>
+                        <td class="text-sm">{{ formatCOP(item.unitPrice ?? 0) }}</td>
+                        <td>
+                          <div class="qty-control">
+                            <button class="qty-btn" (click)="updateQty(item, -1)" aria-label="Disminuir">−</button>
+                            <span class="qty-val">{{ item.quantity }}</span>
+                            <button class="qty-btn" (click)="updateQty(item, 1)" aria-label="Aumentar">+</button>
+                          </div>
+                        </td>
+                        <td class="fw-600 price">{{ formatCOP(item.subtotal ?? 0) }}</td>
+                        <td>
+                          <button class="btn btn-danger btn-sm btn-icon" (click)="removeItem(item)" aria-label="Eliminar ítem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Right panel: add + summary -->
+        <div style="display:flex;flex-direction:column;gap:1rem">
+          <!-- Add product -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Agregar producto</span>
+            </div>
+            <div class="card-body">
+              <form [formGroup]="addForm" (ngSubmit)="addItem()">
+                <div class="form-group">
+                  <label class="form-label" for="add-product">Producto <span class="req">*</span></label>
+                  <select id="add-product" class="form-control" formControlName="productId">
+                    <option [value]="null">— Seleccionar —</option>
+                    @for (p of products(); track p.id) {
+                      <option [value]="p.id">{{ p.name }} — {{ formatCOP(p.price) }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="add-qty">Cantidad <span class="req">*</span></label>
+                  <input id="add-qty" type="number" class="form-control" formControlName="quantity" min="1">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%" [disabled]="savingItem()">
+                  @if (savingItem()) { <span class="spinner"></span> } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  }
+                  Agregar al carrito
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Order summary -->
+          @if ((cart()?.items?.length ?? 0) > 0) {
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Resumen</span>
+              </div>
+              <div class="card-body">
+                <div class="cart-summary">
+                  <div class="summary-row">
+                    <span class="summary-label">Subtotal</span>
+                    <span class="fw-600">{{ formatCOP(cart()?.totalAmount ?? 0) }}</span>
+                  </div>
+                  @if (discountPct() > 0) {
+                    <div class="summary-row">
+                      <span class="summary-label">Descuento ({{ discountPct() }}%)</span>
+                      <span class="summary-discount">− {{ formatCOP(discountAmount()) }}</span>
+                    </div>
+                  }
+                  <div class="summary-row summary-divider summary-total">
+                    <span>Total</span>
+                    <span class="price-lg">{{ formatCOP(finalTotal()) }}</span>
+                  </div>
+                </div>
+
+                @if (discountPct() === 0) {
+                  <p class="text-xs text-muted" style="margin-top:.75rem">
+                    Agrega más de $100.000 para obtener 10% de descuento
+                  </p>
+                }
+
+                <button class="btn btn-success" style="width:100%;margin-top:1rem" (click)="checkout()" [disabled]="checkingOut() || cart()?.status !== 'ACTIVE'">
+                  @if (checkingOut()) { <span class="spinner"></span> } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  }
+                  Realizar Checkout
+                </button>
+
+                @if (cart()?.status !== 'ACTIVE') {
+                  <p class="text-xs text-muted" style="margin-top:.5rem;text-align:center">
+                    Este carrito ya fue procesado ({{ cart()?.status }})
+                  </p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  } @else if (!selectedCustomerId()) {
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </div>
+      <p class="empty-title">Selecciona un cliente</p>
+      <p class="empty-desc">Elige un cliente para ver o crear su carrito activo</p>
+    </div>
+  }
+</main>
