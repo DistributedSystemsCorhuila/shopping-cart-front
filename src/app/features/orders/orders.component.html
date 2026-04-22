@@ -1,0 +1,187 @@
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <span class="topbar-title">Órdenes</span>
+    <span class="topbar-badge">{{ orders().length }} total</span>
+  </div>
+</div>
+
+<main class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-heading">Órdenes</h1>
+      <p class="page-desc">Historial de órdenes y gestión de estados</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" (click)="load()" [disabled]="loading()">
+      @if (loading()) { <span class="spinner"></span> } @else {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      }
+      Refrescar
+    </button>
+  </div>
+
+  <div class="card">
+    @if (loading()) {
+      <div class="loading-box"><span class="spinner"></span> Cargando órdenes…</div>
+    } @else if (orders().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        </div>
+        <p class="empty-title">Sin órdenes</p>
+        <p class="empty-desc">Aún no se han realizado checkouts</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Cliente</th>
+              <th>Subtotal</th>
+              <th>Descuento</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th>Cambiar estado</th>
+              <th>Fecha</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of orders(); track o.id) {
+              <tr>
+                <td class="text-muted text-sm fw-600">#{{ o.id }}</td>
+                <td class="fw-600">{{ o.customerName ?? '—' }}</td>
+                <td class="text-sm">{{ formatCOP(o.subtotal) }}</td>
+                <td>
+                  @if ((o.discount ?? 0) > 0) {
+                    <span class="badge badge-success">− {{ formatCOP(o.discount) }}</span>
+                  } @else {
+                    <span class="text-muted text-sm">—</span>
+                  }
+                </td>
+                <td class="fw-700 price">{{ formatCOP(o.total) }}</td>
+                <td>
+                  <span [class]="badgeClass(o.status)">{{ statusLabel(o.status) }}</span>
+                </td>
+                <td>
+                  <select class="form-control" style="padding:.25rem .5rem;font-size:.8125rem;width:auto"
+                    [value]="o.status"
+                    (change)="updateStatus(o, $event)"
+                    [disabled]="o.status === 'DELIVERED' || o.status === 'CANCELLED'"
+                    [attr.aria-label]="'Cambiar estado orden ' + o.id">
+                    @for (s of statuses; track s) {
+                      <option [value]="s">{{ statusLabel(s) }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="text-sm text-muted">{{ formatDate(o.createdAt) }}</td>
+                <td>
+                  <button class="btn btn-ghost btn-sm" (click)="viewDetail(o)" aria-label="Ver detalle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Ver
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</main>
+
+<!-- Detail Modal -->
+@if (detail()) {
+  <div class="overlay" (click)="closeDetail()" role="dialog" aria-modal="true" aria-label="Detalle de la orden">
+    <div class="modal modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Orden #{{ detail()?.id }}</span>
+        <button class="btn-close" (click)="closeDetail()" aria-label="Cerrar">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Info header -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+          <div>
+            <p class="text-xs text-muted" style="margin-bottom:.25rem">CLIENTE</p>
+            <p class="fw-600">{{ detail()?.customerName ?? '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-muted" style="margin-bottom:.25rem">ESTADO</p>
+            <span [class]="badgeClass(detail()?.status)">{{ statusLabel(detail()?.status) }}</span>
+          </div>
+          <div>
+            <p class="text-xs text-muted" style="margin-bottom:.25rem">FECHA</p>
+            <p class="text-sm">{{ formatDate(detail()?.createdAt) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-muted" style="margin-bottom:.25rem">ÍTEMS</p>
+            <p class="text-sm fw-600">{{ detail()?.items?.length ?? 0 }} productos</p>
+          </div>
+        </div>
+
+        <!-- Items table -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>P. Unitario</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of detail()?.items; track item.id) {
+                <tr>
+                  <td class="fw-600">{{ item.productName }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td class="text-sm">{{ formatCOP(item.unitPrice) }}</td>
+                  <td class="fw-600 price">{{ formatCOP(item.subtotal) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary -->
+        <div class="cart-summary" style="margin-top:1.25rem">
+          <div class="summary-row">
+            <span class="summary-label">Subtotal</span>
+            <span class="fw-600">{{ formatCOP(detail()?.subtotal) }}</span>
+          </div>
+          @if ((detail()?.discount ?? 0) > 0) {
+            <div class="summary-row">
+              <span class="summary-label">Descuento</span>
+              <span class="summary-discount">− {{ formatCOP(detail()?.discount) }}</span>
+            </div>
+          }
+          <div class="summary-row summary-divider summary-total">
+            <span>Total pagado</span>
+            <span class="price-lg">{{ formatCOP(detail()?.total) }}</span>
+          </div>
+        </div>
+
+        <!-- Change status -->
+        @if (detail()?.status !== 'DELIVERED' && detail()?.status !== 'CANCELLED') {
+          <div style="margin-top:1.25rem">
+            <label class="form-label" for="modal-status">Cambiar estado</label>
+            <select id="modal-status" class="form-control"
+              [value]="detail()?.status"
+              (change)="updateStatus(detail()!, $event)">
+              @for (s of statuses; track s) {
+                <option [value]="s">{{ statusLabel(s) }}</option>
+              }
+            </select>
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" (click)="closeDetail()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+}
