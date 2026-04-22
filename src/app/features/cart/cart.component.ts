@@ -48,19 +48,23 @@ export class CartComponent implements OnInit {
     this.customers().find(c => c.id === this.selectedCustomerId()) ?? null
   );
 
+  protected cartSubtotal = computed(() =>
+    (this.cart()?.items ?? []).reduce((sum, item) => sum + (item.subtotal ?? 0), 0)
+  );
+
   protected discountPct = computed(() => {
-    const total = this.cart()?.totalAmount ?? 0;
+    const total = this.cartSubtotal();
     if (total >= 300000) return 15;
     if (total >= 100000) return 10;
     return 0;
   });
 
   protected discountAmount = computed(() =>
-    (this.cart()?.totalAmount ?? 0) * this.discountPct() / 100
+    this.cartSubtotal() * this.discountPct() / 100
   );
 
   protected finalTotal = computed(() =>
-    (this.cart()?.totalAmount ?? 0) - this.discountAmount()
+    this.cartSubtotal() - this.discountAmount()
   );
 
   ngOnInit(): void {

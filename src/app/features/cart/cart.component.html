@@ -151,7 +151,7 @@
                 <div class="cart-summary">
                   <div class="summary-row">
                     <span class="summary-label">Subtotal</span>
-                    <span class="fw-600">{{ formatCOP(cart()?.totalAmount ?? 0) }}</span>
+                    <span class="fw-600">{{ formatCOP(cartSubtotal()) }}</span>
                   </div>
                   @if (discountPct() > 0) {
                     <div class="summary-row">
@@ -165,7 +165,7 @@
                   </div>
                 </div>
 
-                @if (discountPct() === 0) {
+                @if (discountPct() === 0 && cartSubtotal() > 0) {
                   <p class="text-xs text-muted" style="margin-top:.75rem">
                     Agrega más de $100.000 para obtener 10% de descuento
                   </p>
